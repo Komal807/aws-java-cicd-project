@@ -9,6 +9,8 @@ pipeline {
     environment {
         JFROG_URL  = 'http://172.31.47.148:8082'
         JFROG_REPO = 'devops-libs-release-local'
+        APP_SERVER = '172.31.28.128'
+        APP_DIR    = '/opt/aws-devops-app'
     }
 
     stages {
@@ -73,16 +75,77 @@ pipeline {
                 }
             }
         }
+
+        stage('Download Artifact from JFrog') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'jfrog-credentials',
+                        usernameVariable: 'JFROG_USER',
+                        passwordVariable: 'JFROG_TOKEN'
+                    )
+                ]) {
+                    sh '''
+                        rm -f /tmp/aws-devops-app-1.0.0.jar
+
+                        curl -f \
+                          -u "$JFROG_USER:$JFROG_TOKEN" \
+                          -o /tmp/aws-devops-app-1.0.0.jar \
+                          "$JFROG_URL/artifactory/$JFROG_REPO/com/abhi/aws-devops-app/1.0.0/aws-devops-app-1.0.0.jar"
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to App Server') {
+            steps {
+                sh '''
+                    echo "Copying application to App Server..."
+
+                    scp /tmp/aws-devops-app-1.0.0.jar \
+                      ec2-user@$APP_SERVER:$APP_DIR/aws-devops-app-1.0.0.jar.new
+
+                    echo "Stopping old application..."
+
+                    ssh ec2-user@$APP_SERVER \
+                      "pkill -f 'aws-devops-app-1.0.0.jar' || true"
+
+                    echo "Installing new application..."
+
+                    ssh ec2-user@$APP_SERVER \
+                      "mv $APP_DIR/aws-devops-app-1.0.0.jar.new $APP_DIR/aws-devops-app-1.0.0.jar"
+
+                    echo "Starting new application..."
+
+                    ssh ec2-user@$APP_SERVER \
+                      "cd $APP_DIR && nohup java -jar aws-devops-app-1.0.0.jar > app.log 2>&1 < /dev/null &"
+                '''
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                sh '''
+                    echo "Waiting for application to start..."
+                    sleep 10
+
+                    ssh ec2-user@$APP_SERVER \
+                      "curl -f http://localhost:8080/"
+                '''
+            }
+        }
     }
 
     post {
         success {
-            echo 'CI Pipeline completed successfully!'
-            echo 'SonarQube analysis completed and artifact uploaded to JFrog.'
+            echo 'CI/CD Pipeline completed successfully!'
+            echo 'SonarQube analysis completed.'
+            echo 'Artifact uploaded to JFrog.'
+            echo 'Application deployed successfully to AWS EC2.'
         }
 
         failure {
-            echo 'CI Pipeline failed!'
+            echo 'CI/CD Pipeline failed!'
         }
     }
 }
