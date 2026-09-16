@@ -7,7 +7,7 @@ pipeline {
     }
 
     environment {
-        JFROG_URL = 'http://172.31.47.148:8082'
+        JFROG_URL  = 'http://172.31.47.148:8082'
         JFROG_REPO = 'devops-libs-release-local'
     }
 
@@ -28,6 +28,18 @@ pipeline {
         stage('Test') {
             steps {
                 sh 'mvn test'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarCloud') {
+                    sh '''
+                        mvn sonar:sonar \
+                          -Dsonar.projectKey=Komal807_aws-java-cicd-project \
+                          -Dsonar.organization=komal807
+                    '''
+                }
             }
         }
 
@@ -54,9 +66,9 @@ pipeline {
                 ]) {
                     sh '''
                         curl -f \
-                        -u "$JFROG_USER:$JFROG_TOKEN" \
-                        -T target/aws-devops-app-1.0.0.jar \
-                        "$JFROG_URL/artifactory/$JFROG_REPO/com/abhi/aws-devops-app/1.0.0/aws-devops-app-1.0.0.jar"
+                          -u "$JFROG_USER:$JFROG_TOKEN" \
+                          -T target/aws-devops-app-1.0.0.jar \
+                          "$JFROG_URL/artifactory/$JFROG_REPO/com/abhi/aws-devops-app/1.0.0/aws-devops-app-1.0.0.jar"
                     '''
                 }
             }
@@ -65,7 +77,8 @@ pipeline {
 
     post {
         success {
-            echo 'CI Pipeline completed successfully and artifact uploaded to JFrog!'
+            echo 'CI Pipeline completed successfully!'
+            echo 'SonarQube analysis completed and artifact uploaded to JFrog.'
         }
 
         failure {
