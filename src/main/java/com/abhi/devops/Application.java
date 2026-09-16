@@ -15,6 +15,6 @@ public class Application {
 
     @GetMapping("/")
     public String home() {
-        return "AWS DevOps CI/CD Project - Version 1.0";
+        return "AWS DevOps CI/CD Project - Version 2.0";
     }
 }
