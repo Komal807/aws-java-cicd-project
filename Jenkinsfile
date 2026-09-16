@@ -35,7 +35,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarCloud') {
                     sh '''
-                        mvn sonar:sonar \
+                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
                           -Dsonar.projectKey=Komal807_aws-java-cicd-project \
                           -Dsonar.organization=komal807
                     '''
