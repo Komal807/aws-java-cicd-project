@@ -108,7 +108,7 @@ pipeline {
                     echo "Stopping old application..."
 
                     ssh ec2-user@$APP_SERVER \
-                      "pkill -f 'aws-devops-app-1.0.0.jar' || true"
+                      "PID=\$(pgrep -f '[a]ws-devops-app-1.0.0.jar' || true); if [ -n \"\$PID\" ]; then kill \$PID; fi"
 
                     echo "Installing new application..."
 
